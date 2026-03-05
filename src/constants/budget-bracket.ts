@@ -1,0 +1,7 @@
+export enum BudgetBracket {
+  MOINS_20000 = 'MOINS_20000',
+  BETWEEN_20000_50000 = 'BETWEEN_20000_50000',
+  PLUS_50000 = 'PLUS_50000',
+  A_DEFINIR = 'A_DEFINIR',
+}
+

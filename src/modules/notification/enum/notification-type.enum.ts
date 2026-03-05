@@ -1,0 +1,7 @@
+export enum NotificationTypeEnum {
+  MESSAGE = 'MESSAGE',
+  FORUM = 'FORUM',
+  RESERVATION = 'RESERVATION',
+  COMMISSION = 'COMMISSION',
+  LEAD = 'LEAD',
+}

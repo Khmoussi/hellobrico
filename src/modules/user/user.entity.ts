@@ -7,6 +7,7 @@ import { PostEntity } from '../post/post.entity.ts';
 import type { UserDtoOptions } from './dtos/user.dto.ts';
 import { UserDto } from './dtos/user.dto.ts';
 import { UserSettingsEntity } from './user-settings.entity.ts';
+import type { UserNotification } from 'modules/notification/entities/user-notification.entity.ts';
 
 @Entity({ name: 'users' })
 @UseDto(UserDto)
@@ -27,7 +28,7 @@ export class UserEntity extends AbstractEntity<UserDto, UserDtoOptions> {
   password!: string | null;
 
   @Column({ nullable: true, type: 'varchar' })
-  phone!: string | null;
+  phone?: string | null;
 
   @Column({ nullable: true, type: 'varchar' })
   avatar!: string | null;
@@ -43,4 +44,11 @@ export class UserEntity extends AbstractEntity<UserDto, UserDtoOptions> {
 
   @OneToMany(() => PostEntity, (postEntity) => postEntity.user)
   posts?: PostEntity[];
+
+
+  @OneToMany(
+    ('UserNotification'),
+    (userNotification:UserNotification) => userNotification.user,
+  )
+  notifications?: UserNotification[];
 }

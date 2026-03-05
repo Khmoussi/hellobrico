@@ -1,0 +1,8 @@
+export enum ProjectStatus {
+  EN_PREPARATION = 'EN_PREPARATION',
+  EN_COURS = 'EN_COURS',
+  EN_PAUSE = 'EN_PAUSE',
+  TERMINE = 'TERMINE',
+  ANNULE = 'ANNULE',
+}
+

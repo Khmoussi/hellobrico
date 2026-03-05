@@ -1,0 +1,9 @@
+export enum LeadHistoryType {
+  STATUS_CHANGE = 'STATUS_CHANGE',
+  NOTE = 'NOTE',
+  EMAIL_SENT = 'EMAIL_SENT',
+  VISIT_PLANNED = 'VISIT_PLANNED',
+  QUOTE_SENT = 'QUOTE_SENT',
+  OTHER = 'OTHER',
+}
+

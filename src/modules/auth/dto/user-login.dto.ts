@@ -1,12 +1,10 @@
-import {
-  EmailField,
-  StringField,
-} from '../../../decorators/field.decorators.ts';
+import { IsEmail } from 'class-validator';
+import { IsPassword } from '../../../decorators/validator.decorators.ts';
 
 export class UserLoginDto {
-  @EmailField()
-  readonly email!: string;
+    @IsEmail()
+    readonly email!: string;
 
-  @StringField()
+  @IsPassword()
   readonly password!: string;
 }

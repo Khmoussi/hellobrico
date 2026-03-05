@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToClass } from 'class-transformer';
-import type { FindOptionsWhere } from 'typeorm';
+import { In, type FindOptionsWhere } from 'typeorm';
 import { Repository } from 'typeorm';
 import { Transactional } from 'typeorm-transactional';
 
@@ -13,6 +13,7 @@ import type { IFile } from '../../interfaces/IFile.ts';
 import { AwsS3Service } from '../../shared/services/aws-s3.service.ts';
 import { ValidatorService } from '../../shared/services/validator.service.ts';
 import type { Reference } from '../../types.ts';
+import { RoleType } from '../../constants/role-type.ts';
 import { UserRegisterDto } from '../auth/dto/user-register.dto.ts';
 import { CreateSettingsCommand } from './commands/create-settings.command.ts';
 import { CreateSettingsDto } from './dtos/create-settings.dto.ts';
@@ -36,6 +37,26 @@ export class UserService {
    */
   findOne(findData: FindOptionsWhere<UserEntity>): Promise<UserEntity | null> {
     return this.userRepository.findOneBy(findData);
+  }
+
+  findOneById(id: Uuid): Promise<UserEntity | null> {
+    return this.userRepository.findOneBy({ id });
+  }
+
+  /**
+   * Find users by IDs.
+   */
+  findUsersInIds(ids: string[]): Promise<UserEntity[]> {
+    if (!ids?.length) return Promise.resolve([]);
+    return this.userRepository.find({ where: { id: In(ids) } });
+  }
+
+  /**
+   * Find users having one of the given roles (e.g. ADMIN, SUPERVISOR, COMMERCIAL).
+   */
+  findUsersByRoles(roles: RoleType[]): Promise<UserEntity[]> {
+    if (!roles?.length) return Promise.resolve([]);
+    return this.userRepository.find({ where: { role: In(roles) } });
   }
 
   findByUsernameOrEmail(
@@ -64,8 +85,13 @@ export class UserService {
   async createUser(
     userRegisterDto: UserRegisterDto,
     file?: Reference<IFile>,
+    role?: RoleType,
   ): Promise<UserEntity> {
     const user = this.userRepository.create(userRegisterDto);
+
+    if (role) {
+      user.role = role;
+    }
 
     if (file && !this.validatorService.isImage(file.mimetype)) {
       throw new FileNotImageException();
@@ -86,6 +112,28 @@ export class UserService {
     );
 
     return user;
+  }
+
+  /**
+   * Create a commercial user (backoffice).
+   */
+  @Transactional()
+  async createCommercial(
+    userRegisterDto: UserRegisterDto,
+    file?: Reference<IFile>,
+  ): Promise<UserEntity> {
+    return this.createUser(userRegisterDto, file, RoleType.COMMERCIAL);
+  }
+
+  /**
+   * Create a supervisor user (backoffice).
+   */
+  @Transactional()
+  async createSupervisor(
+    userRegisterDto: UserRegisterDto,
+    file?: Reference<IFile>,
+  ): Promise<UserEntity> {
+    return this.createUser(userRegisterDto, file, RoleType.SUPERVISOR);
   }
 
   async getUsers(
