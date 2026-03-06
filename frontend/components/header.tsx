@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Menu, X } from "lucide-react"
 
 interface HeaderProps {
@@ -30,14 +31,23 @@ export function Header({ forceSolid = false }: HeaderProps) {
     >
       <div className="mx-auto max-w-[1280px] px-6 flex items-center justify-between h-[72px]">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <span
-            className={`font-serif text-2xl font-bold tracking-tight transition-colors duration-300 ${
-              forceSolid || scrolled ? "text-primary" : "text-primary-foreground"
-            }`}
-          >
-            HelloBrico
-          </span>
+        <Link href="/" className="flex items-center gap-3">
+          <div className="relative w-10 h-10">
+            <Image
+              src={forceSolid || scrolled ? "/images/logomark-blue.png" : "/images/logomark-white.png"}
+              alt="HelloBrico Logo"
+              fill
+              className="object-contain"
+            />
+          </div>
+          <div className="relative h-6 w-32">
+            <Image
+              src={forceSolid || scrolled ? "/images/wordmark-blue.png" : "/images/wordmark-white.png"}
+              alt="HelloBrico"
+              fill
+              className="object-contain"
+            />
+          </div>
         </Link>
 
         {/* Desktop Nav */}

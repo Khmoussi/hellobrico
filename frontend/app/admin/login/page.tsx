@@ -5,6 +5,7 @@ import { useAuth } from "@/components/admin/auth-context"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, ArrowRight, Lock } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function AdminLoginPage() {
   const { login } = useAuth()
@@ -36,10 +37,23 @@ export default function AdminLoginPage() {
       {/* Left side - branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-primary relative flex-col justify-between p-12">
         <div>
-          <Link href="/">
-            <span className="font-serif text-2xl font-bold text-primary-foreground">
-              HelloBrico
-            </span>
+          <Link href="/" className="flex items-center gap-3">
+            <div className="relative w-10 h-10">
+              <Image
+                src="/images/logomark-blue.png"
+                alt="HelloBrico Logo"
+                fill
+                className="object-contain"
+              />
+            </div>
+            <div className="relative h-6 w-32">
+              <Image
+                src="/images/wordmark-blue.png"
+                alt="HelloBrico"
+                fill
+                className="object-contain"
+              />
+            </div>
           </Link>
         </div>
 
@@ -75,10 +89,23 @@ export default function AdminLoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden mb-10">
-            <Link href="/">
-              <span className="font-serif text-2xl font-bold text-foreground">
-                HelloBrico
-              </span>
+            <Link href="/" className="flex items-center gap-3">
+              <div className="relative w-10 h-10">
+                <Image
+                  src="/images/logomark-blue.png"
+                  alt="HelloBrico Logo"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <div className="relative h-6 w-32">
+                <Image
+                  src="/images/wordmark-blue.png"
+                  alt="HelloBrico"
+                  fill
+                  className="object-contain"
+                />
+              </div>
             </Link>
           </div>
 

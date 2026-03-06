@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { Phone, Mail, MapPin } from "lucide-react"
 
 function FacebookIcon({ size = 16 }: { size?: number }) {
@@ -32,8 +33,25 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="md:col-span-1">
-            <span className="font-serif text-2xl font-bold">HelloBrico</span>
-            <p className="mt-4 text-sm text-primary-foreground/70 leading-relaxed">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="relative w-10 h-10">
+                <Image
+                  src="/images/logomark-white.png"
+                  alt="HelloBrico Logo"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <div className="relative h-6 w-32">
+                <Image
+                  src="/images/wordmark-white.png"
+                  alt="HelloBrico"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+            </div>
+            <p className="text-sm text-primary-foreground/70 leading-relaxed">
               {"Rénovation premium avec méthode, transparence et supervision quotidienne."}
             </p>
             {/* Social links */}
