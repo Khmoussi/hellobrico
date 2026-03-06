@@ -1,17 +1,17 @@
 import type { Metadata, Viewport } from 'next'
-import { DM_Sans, Playfair_Display } from 'next/font/google'
+import { Merriweather, Plus_Jakarta_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const dmSans = DM_Sans({
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  variable: '--font-dm-sans',
+  variable: '--font-plus-jakarta-sans',
   display: 'swap',
 })
 
-const playfair = Playfair_Display({
+const merriweather = Merriweather({
   subsets: ['latin'],
-  variable: '--font-playfair',
+  variable: '--font-merriweather',
   display: 'swap',
 })
 
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0E2A47',
+  themeColor: '#002651',
   width: 'device-width',
   initialScale: 1,
 }
@@ -50,7 +50,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className={`${dmSans.variable} ${playfair.variable} font-sans antialiased`}>
+      <body className={`${plusJakartaSans.variable} ${merriweather.variable} font-sans antialiased`}>
         {children}
         <Analytics />
       </body>
