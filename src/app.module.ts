@@ -19,7 +19,6 @@ import { AuthModule } from './modules/auth/auth.module.ts';
 import { HealthCheckerModule } from './modules/health-checker/health-checker.module.ts';
 import { BackofficeModule } from './modules/backoffice/backoffice.module.ts';
 import { LeadModule } from './modules/lead/lead.module.ts';
-import { PostModule } from './modules/post/post.module.ts';
 import { UserModule } from './modules/user/user.module.ts';
 import { ApiConfigService } from './shared/services/api-config.service.ts';
 import { SharedModule } from './shared/shared.module.ts';
@@ -35,7 +34,6 @@ import { NotificationModule } from './modules/notification/notification.module.t
     BackofficeModule,
     LeadModule,
     UserModule,
-    PostModule,
     EmailModule,
     NotificationModule,
     ClsModule.forRoot({

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, type Repository } from 'typeorm';
+import { Between, In, type Repository } from 'typeorm';
 
 import { PageDto } from '../../common/dto/page.dto.ts';
 import { PageMetaDto } from '../../common/dto/page-meta.dto.ts';
@@ -11,9 +11,13 @@ import type { CreateLeadDto } from './dtos/create-lead.dto.ts';
 import { LeadDto } from './dtos/lead.dto.ts';
 import { LeadsPageOptionsDto } from './dtos/leads-page-options.dto.ts';
 import type { UpdateLeadStatusDto } from './dtos/update-lead-status.dto.ts';
+import { DashboardKpisDto } from './dtos/dashboard-kpis.dto.ts';
 import { LeadHistoryType } from '../../constants/lead-history-type.ts';
 import { LeadStatus } from '../../constants/lead-status.ts';
+import { ProjectStatus } from '../../constants/project-status.ts';
 import { LeadEntity, LeadHistoryEntity } from './entities/lead.entity.ts';
+import { ProjectEntity } from './entities/project.entity.ts';
+import { Quote } from './entities/quote.entity.ts';
 import { File } from '../files/entities/file.entity.ts';
 import { UserEntity } from '../user/user.entity.ts';
 
@@ -28,6 +32,10 @@ export class LeadService {
     private leadHistoryRepository: Repository<LeadHistoryEntity>,
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
+    @InjectRepository(Quote)
+    private quoteRepository: Repository<Quote>,
+    @InjectRepository(ProjectEntity)
+    private projectRepository: Repository<ProjectEntity>,
     private eventEmitter: EventEmitter2,
   ) {}
 
@@ -221,6 +229,81 @@ export class LeadService {
       relations: ['files'],
     });
     return new LeadDto(updated!);
+  }
+
+  async getLeadNotes(leadId: Uuid): Promise<LeadHistoryEntity[]> {
+    const lead = await this.leadRepository.findOne({ where: { id: leadId } });
+    if (!lead) throw new NotFoundException('Lead not found');
+    return this.leadHistoryRepository.find({
+      where: { lead: { id: leadId }, type: LeadHistoryType.NOTE },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getLeadHistory(leadId: Uuid): Promise<LeadHistoryEntity[]> {
+    const lead = await this.leadRepository.findOne({ where: { id: leadId } });
+    if (!lead) throw new NotFoundException('Lead not found');
+    return this.leadHistoryRepository.find({
+      where: { lead: { id: leadId } },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getDashboardKpis(): Promise<DashboardKpisDto> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
+
+    const [leadsThisMonth, quotesSentThisMonth, totalLeads, convertedLeads, activeProjects] =
+      await Promise.all([
+        this.leadRepository.count({
+          where: { createdAt: Between(startOfMonth, endOfMonth) },
+        }),
+        this.quoteRepository.count({
+          where: { sentAt: Between(startOfMonth, endOfMonth) },
+        }),
+        this.leadRepository.count(),
+        this.leadRepository.count({
+          where: { status: LeadStatus.CONVERTI },
+        }),
+        this.projectRepository.count({
+          where: {
+            status: In([
+              ProjectStatus.EN_PREPARATION,
+              ProjectStatus.EN_COURS,
+            ]),
+          },
+        }),
+      ]);
+
+    const conversionRate =
+      totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 1000) / 10 : 0;
+
+    return {
+      leadsThisMonth,
+      quotesSentThisMonth,
+      conversionRate,
+      activeProjects,
+    };
+  }
+
+  async getRecentLeads(limit = 10): Promise<LeadDto[]> {
+    const leads = await this.leadRepository.find({
+      relations: ['files'],
+      order: { createdAt: 'DESC' },
+      take: Math.min(Math.max(1, limit), 50),
+    });
+    return leads.map((l) => new LeadDto(l));
   }
 }
 

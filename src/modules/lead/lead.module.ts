@@ -7,10 +7,13 @@ import { FilesModule } from '../files/files.module.ts';
 import { UserEntity } from '../user/user.entity.ts';
 import { ArticleEntity } from './entities/article.entity.ts';
 import { LeadEntity, LeadHistoryEntity } from './entities/lead.entity.ts';
+import { ProjectEntity } from './entities/project.entity.ts';
+import { ProjectNoteEntity } from './entities/project-note.entity.ts';
 import { Quote } from './entities/quote.entity.ts';
 import { ArticleService } from './article.service.ts';
 import { LeadController } from './lead.controller.ts';
 import { LeadService } from './lead.service.ts';
+import { ProjectService } from './project.service.ts';
 import { PublicArticleController } from './public-article.controller.ts';
 import { QuoteService } from './quote.service.ts';
 import { ArticleRepository } from './repositories/article.repository.ts';
@@ -23,6 +26,8 @@ import { TypeOrmExModule } from '../../database/typeorm-ex.module.ts';
       LeadHistoryEntity,
       ArticleEntity,
       Quote,
+      ProjectEntity,
+      ProjectNoteEntity,
       File,
       UserEntity,
     ]),
@@ -31,8 +36,8 @@ import { TypeOrmExModule } from '../../database/typeorm-ex.module.ts';
     EmailModule,
   ],
   controllers: [LeadController, PublicArticleController],
-  providers: [LeadService, ArticleService, QuoteService],
-  exports: [LeadService, ArticleService, QuoteService],
+  providers: [LeadService, ArticleService, QuoteService, ProjectService],
+  exports: [LeadService, ArticleService, QuoteService, ProjectService],
 })
 export class LeadModule {}
 

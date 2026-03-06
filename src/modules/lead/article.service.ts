@@ -31,7 +31,7 @@ export class ArticleService {
     dto.coverImageId = entity.coverImage ? entity.coverImage.id : null;
     dto.status = entity.status;
     dto.publishedAt = entity.publishedAt;
-    dto.coverImage = entity.coverImage;
+    dto.coverImage = entity.coverImage as File | null;
     return dto;
   }
 

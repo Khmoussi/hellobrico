@@ -8,7 +8,7 @@ import {
   UploadedFile,
   Version,
 } from '@nestjs/common';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiExcludeEndpoint, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 
 import { RoleType } from '../../constants/role-type.ts';
 import { AuthUser } from '../../decorators/auth-user.decorator.ts';
@@ -51,6 +51,8 @@ export class AuthController {
     return new LoginPayloadDto(userEntity.toDto(), token);
   }
 
+  
+  @ApiExcludeEndpoint()
   @Post('register')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: UserDto, description: 'Successfully Registered' })
@@ -68,7 +70,8 @@ export class AuthController {
       isActive: true,
     });
   }
-
+  
+  @ApiExcludeEndpoint()
   @Version('1')
   @Get('me')
   @HttpCode(HttpStatus.OK)

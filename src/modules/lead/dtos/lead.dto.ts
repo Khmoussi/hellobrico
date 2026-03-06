@@ -90,6 +90,9 @@ export class LeadDto extends AbstractDto {
   @EnumField(() => LeadStatus)
   status!: LeadStatus;
 
+  @StringFieldOptional({ nullable: true })
+  lostReason?: string | null;
+
   @ClassFieldOptional(() => LeadFileDto, { each: true })
   files?: LeadFileDto[];
 
@@ -109,6 +112,7 @@ export class LeadDto extends AbstractDto {
     this.email = lead.email;
     this.isAbroad = lead.isAbroad;
     this.status = lead.status;
+    this.lostReason = lead.lostReason;
     this.files = lead.files?.map((f) => new LeadFileDto(f)) ?? [];
   }
 }

@@ -74,24 +74,7 @@ export class NotificationService {
             order: { createdAt: 'DESC' },
             });
         }
-        async getUserNotificationsWithUnreadMsgNumber(userId: Uuid) {
-            // Fetch all notifications
-            const notifications = await this.userNotificationRepo.find({
-              where: { user: { id: userId } },
-              relations: ['notification'],
-              order: { createdAt: 'DESC' },
-            });
-        
-            // Count unread notifications
-            const unreadCount = await this.userNotificationRepo.count({
-              where: { user: { id: userId }, isSeen: false },
-            });
-        
-            return {
-              notifications,
-              unreadCount,
-            };
-          }
+      
   
         async markAsSeen(userId: Uuid, notificationId: Uuid) {
             const userNotification = await this.userNotificationRepo.findOne({

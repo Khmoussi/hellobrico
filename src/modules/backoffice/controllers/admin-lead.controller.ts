@@ -17,6 +17,7 @@ import { CurrentUser } from '../../../decorators/user.dcorator.ts';
 import { AddLeadNoteDto } from '../../lead/dtos/add-lead-note.dto.ts';
 import { AssignLeadDto } from '../../lead/dtos/assign-lead.dto.ts';
 import { LeadDto } from '../../lead/dtos/lead.dto.ts';
+import { LeadHistoryDto } from '../../lead/dtos/lead-history.dto.ts';
 import { LeadsPageOptionsDto } from '../../lead/dtos/leads-page-options.dto.ts';
 import { UpdateLeadStatusDto } from '../../lead/dtos/update-lead-status.dto.ts';
 import { LeadService } from '../../lead/lead.service.ts';
@@ -38,6 +39,34 @@ export class AdminLeadController {
     @Query() pageOptionsDto: LeadsPageOptionsDto,
   ): Promise<PageDto<LeadDto>> {
     return this.leadService.getLeads(pageOptionsDto);
+  }
+
+  @Get(':id/notes')
+  @Auth([RoleType.ADMIN, RoleType.SUPERVISOR, RoleType.COMMERCIAL])
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    type: LeadHistoryDto,
+    isArray: true,
+    description: 'Notes for the lead (history entries with type NOTE)',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid', required: true })
+  async getLeadNotes(@UUIDParam('id') id: Uuid): Promise<LeadHistoryDto[]> {
+    const notes = await this.leadService.getLeadNotes(id);
+    return notes.map((n) => new LeadHistoryDto(n));
+  }
+
+  @Get(':id/history')
+  @Auth([RoleType.ADMIN, RoleType.SUPERVISOR, RoleType.COMMERCIAL])
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    type: LeadHistoryDto,
+    isArray: true,
+    description: 'Full history for the lead (status changes, notes, etc.)',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid', required: true })
+  async getLeadHistory(@UUIDParam('id') id: Uuid): Promise<LeadHistoryDto[]> {
+    const history = await this.leadService.getLeadHistory(id);
+    return history.map((h) => new LeadHistoryDto(h));
   }
 
   @Get(':id')
@@ -123,5 +152,7 @@ export class AdminLeadController {
   ): Promise<LeadDto> {
     return this.leadService.addLeadNote(id, dto, user?.id);
   }
+
+
 }
 

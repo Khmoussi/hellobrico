@@ -1,20 +1,29 @@
-import { Column, Entity, ManyToOne, OneToMany, OneToOne } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+} from 'typeorm';
 
 import { AbstractEntity } from '../../../common/abstract.entity.ts';
 import { BudgetBracket } from '../../../constants/budget-bracket.ts';
 import { ProjectStatus } from '../../../constants/project-status.ts';
-import { ProjectStepStatus } from '../../../constants/project-step-status.ts';
+import { ProjectStep } from '../../../constants/project-step-status.ts';
 import { PropertyType } from '../../../constants/property-type.ts';
 import { RenovationType } from '../../../constants/renovation-type.ts';
 import { File } from '../../files/entities/file.entity.ts';
 import { UserEntity } from '../../user/user.entity.ts';
 import { LeadEntity } from './lead.entity.ts';
+import { ProjectNoteEntity } from './project-note.entity.ts';
 
 @Entity({ name: 'projects' })
 export class ProjectEntity extends AbstractEntity {
   @OneToOne(() => LeadEntity, (lead) => lead.convertedProject, {
     nullable: true,
   })
+  @JoinColumn({ name: 'lead_id' })
   lead!: LeadEntity | null;
 
   @Column({ type: 'varchar', length: 255 })
@@ -40,9 +49,7 @@ export class ProjectEntity extends AbstractEntity {
   @Column({ type: 'enum', enum: ProjectStatus })
   status!: ProjectStatus;
 
-  @Column({ type: 'int', default: 0 })
-  overallProgress!: number;
-
+ 
   @ManyToOne(() => UserEntity, { nullable: true })
   supervisor!: UserEntity | null;
 
@@ -52,48 +59,15 @@ export class ProjectEntity extends AbstractEntity {
   @Column({ type: 'date', nullable: true })
   endDate!: Date | null;
 
-  @OneToMany(() => ProjectStepEntity, (step) => step.project)
-  steps!: ProjectStepEntity[];
+  @Column({ type: 'enum', enum: ProjectStep })
+  currentStep!: ProjectStep;
 
   @OneToMany(() => File, (file) => file.project)
   files!: File[];
+
+  @OneToMany(() => ProjectNoteEntity, (note) => note.project)
+  notes!: ProjectNoteEntity[];
 }
 
-@Entity({ name: 'project_steps' })
-export class ProjectStepEntity extends AbstractEntity {
-  @ManyToOne(() => ProjectEntity, (project) => project.steps, {
-    nullable: false,
-  })
-  project!: ProjectEntity;
 
-  @Column({ type: 'varchar', length: 100 })
-  name!: string;
-
-  @Column({ type: 'int' })
-  order!: number;
-
-  @Column({ type: 'enum', enum: ProjectStepStatus })
-  status!: ProjectStepStatus;
-
-  @Column({ type: 'int', default: 0 })
-  progress!: number;
-
-  @Column({ type: 'date', nullable: true })
-  plannedStart!: Date | null;
-
-  @Column({ type: 'date', nullable: true })
-  plannedEnd!: Date | null;
-
-  @Column({ type: 'date', nullable: true })
-  actualStart!: Date | null;
-
-  @Column({ type: 'date', nullable: true })
-  actualEnd!: Date | null;
-
-  @Column({ type: 'text', nullable: true })
-  notes!: string | null;
-
-  @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
-  lastUpdateAt!: Date;
-}
 
