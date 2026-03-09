@@ -16,7 +16,7 @@ export const metadata = {
 export default function MagazinePage() {
   return (
     <>
-      <Header />
+      <Header forceSolid />
       <main>
         <MagazineHero />
         <MagazineFeatured />
