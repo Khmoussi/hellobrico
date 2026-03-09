@@ -15,7 +15,7 @@ export const metadata = {
 export default function ServicesPage() {
   return (
     <>
-      <Header />
+      <Header forceSolid />
       <main>
         <ServicesHero />
         <ServicesGrid />

@@ -196,16 +196,7 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Demo credentials hint */}
-          <div className="mt-8 rounded-lg bg-muted/50 border border-border px-4 py-3">
-            <p className="text-xs font-medium text-muted-foreground mb-1">Identifiants demo</p>
-            <p className="text-xs text-muted-foreground">
-              Email : <span className="font-mono text-foreground">admin@hellobrico.tn</span>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Mot de passe : <span className="font-mono text-foreground">admin123</span>
-            </p>
-          </div>
+      
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
             <Link href="/" className="hover:text-foreground transition-colors">
