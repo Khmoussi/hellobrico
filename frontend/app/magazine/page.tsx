@@ -5,6 +5,7 @@ import { MagazineHero } from "@/components/magazine/magazine-hero"
 import { MagazineFeatured } from "@/components/magazine/magazine-featured"
 import { MagazineGrid } from "@/components/magazine/magazine-grid"
 import { MagazineCTA } from "@/components/magazine/magazine-cta"
+import { MagazineNewsletter } from "@/components/magazine/magazine-newsletter"
 
 export const metadata = {
   title: "HelloBrico Magazine — Conseils, réalisations et expertise",
@@ -20,6 +21,7 @@ export default function MagazinePage() {
         <MagazineHero />
         <MagazineFeatured />
         <MagazineGrid />
+        <MagazineNewsletter />
         <MagazineCTA />
       </main>
       <Footer />

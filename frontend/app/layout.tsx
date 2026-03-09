@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Merriweather, Plus_Jakarta_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -49,9 +50,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="fr">
-      <body className={`${plusJakartaSans.variable} ${merriweather.variable} font-sans antialiased`}>
+    <html lang="fr" suppressHydrationWarning>
+      <body className={`${plusJakartaSans.variable} ${merriweather.variable} font-sans antialiased`} suppressHydrationWarning>
         {children}
+        <Toaster />
         <Analytics />
       </body>
     </html>

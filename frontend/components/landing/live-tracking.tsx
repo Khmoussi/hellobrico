@@ -141,7 +141,7 @@ export function LiveTracking() {
             >
               <Link
                 href="/estimation"
-                className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground font-medium text-sm tracking-wide uppercase px-7 py-3.5 rounded-[10px] hover:bg-[#0A1F35] transition-all duration-300 shadow-lg shadow-primary/15"
+                className="inline-flex w-full sm:w-auto items-center justify-center gap-2 bg-primary text-primary-foreground font-medium text-sm tracking-wide uppercase px-7 py-3.5 rounded-[10px] hover:bg-[#0A1F35] transition-all duration-300 shadow-lg shadow-primary/15"
               >
                 Demander une estimation
                 <ArrowRight size={16} />
@@ -273,7 +273,7 @@ export function LiveTracking() {
                 </div>
 
                 {/* Quick action pills */}
-                <div className="flex gap-2 mb-4">
+                <div className="flex flex-wrap gap-2 mb-4">
                   <button className="flex items-center gap-1.5 px-3 py-2 bg-primary/5 hover:bg-primary/10 rounded-xl text-[11px] font-medium text-primary transition-colors">
                     <Play size={12} />
                     Voir le live

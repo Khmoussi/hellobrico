@@ -16,19 +16,32 @@ import {
 import { useState } from "react"
 import { useAuth } from "./auth-context"
 
-const navItems = [
-  { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { label: "Leads (CRM)", href: "/admin/leads", icon: Users },
-  { label: "Projets actifs", href: "/admin/projects", icon: FolderKanban },
-  { label: "Devis", href: "/admin/quotes", icon: FileText },
-  { label: "Magazine", href: "/admin/magazine", icon: Newspaper },
-  { label: "Paramètres", href: "/admin/settings", icon: Settings },
-]
+const roleNavItems = {
+  ADMIN: [
+    { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { label: "Leads", href: "/admin/leads", icon: Users },
+    { label: "Projets", href: "/admin/projects", icon: FolderKanban },
+    { label: "Devis", href: "/admin/quotes", icon: FileText },
+    { label: "Magazine", href: "/admin/magazine", icon: Newspaper },
+    { label: "Parametres", href: "/admin/settings", icon: Settings },
+  ],
+  COMMERCIAL: [
+    { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { label: "Leads", href: "/admin/leads", icon: Users },
+    { label: "Projets", href: "/admin/projects", icon: FolderKanban },
+    { label: "Devis", href: "/admin/quotes", icon: FileText },
+  ],
+  SUPERVISOR: [
+    { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { label: "Projets", href: "/admin/projects", icon: FolderKanban },
+  ],
+} as const
 
 export function AdminSidebar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { logout, user } = useAuth()
+  const navItems = roleNavItems[user?.role || "ADMIN"]
 
   const isActive = (href: string) => {
     if (href === "/admin") return pathname === "/admin"
@@ -40,7 +53,7 @@ export function AdminSidebar() {
       {/* Mobile toggle */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-lg bg-sidebar text-sidebar-foreground flex items-center justify-center shadow-lg"
+        className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-lg bg-[#0B2440] text-white flex items-center justify-center shadow-lg"
         aria-label="Ouvrir le menu"
       >
         <Menu size={20} />
@@ -56,33 +69,33 @@ export function AdminSidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-[260px] bg-sidebar flex flex-col transition-transform duration-300 ${
+        className={`fixed top-0 left-0 z-50 h-screen w-[272px] bg-[#0B2440] text-white flex flex-col transition-transform duration-300 shadow-[8px_0_30px_rgba(8,19,35,0.18)] ${
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Close on mobile */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="lg:hidden absolute top-4 right-4 text-sidebar-foreground/60 hover:text-sidebar-foreground"
+          className="lg:hidden absolute top-4 right-4 text-white/60 hover:text-white"
           aria-label="Fermer le menu"
         >
           <X size={20} />
         </button>
 
         {/* Logo */}
-        <div className="px-6 py-6 border-b border-sidebar-border">
+        <div className="px-6 py-6 border-b border-white/10">
           <Link href="/admin">
-            <span className="font-serif text-xl font-bold text-sidebar-foreground">
+            <span className="font-serif text-xl font-bold text-white">
               HelloBrico
             </span>
-            <span className="block text-[10px] uppercase tracking-widest text-sidebar-foreground/40 mt-0.5">
+            <span className="block text-[10px] uppercase tracking-widest text-white/45 mt-0.5">
               Admin
             </span>
           </Link>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-1.5">
           {navItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
@@ -93,8 +106,8 @@ export function AdminSidebar() {
                 onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+                    : "text-white/78 hover:bg-white/8 hover:text-white"
                 }`}
               >
                 <Icon size={18} strokeWidth={1.5} />
@@ -106,21 +119,21 @@ export function AdminSidebar() {
 
         {/* User info */}
         {user && (
-          <div className="px-6 py-3 border-t border-sidebar-border">
-            <p className="text-xs font-medium text-sidebar-foreground/80 truncate">
+          <div className="px-6 py-3 border-t border-white/10">
+            <p className="text-xs font-medium text-white/90 truncate">
               {user.name}
             </p>
-            <p className="text-[10px] text-sidebar-foreground/40 truncate">
+            <p className="text-[10px] text-white/45 truncate">
               {user.email}
             </p>
           </div>
         )}
 
         {/* Bottom */}
-        <div className="px-3 pb-4 border-t border-sidebar-border pt-4">
+        <div className="px-3 pb-4 border-t border-white/10 pt-4">
           <button
             onClick={logout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/30 w-full transition-all duration-200"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/65 hover:text-white hover:bg-white/8 w-full transition-all duration-200"
           >
             <LogOut size={18} strokeWidth={1.5} />
             {"Deconnexion"}

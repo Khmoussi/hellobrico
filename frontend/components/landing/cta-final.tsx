@@ -41,7 +41,7 @@ export function CTAFinal() {
         >
           <Link
             href="/estimation"
-            className="inline-flex items-center justify-center gap-2 bg-card text-primary font-medium text-sm tracking-wide uppercase px-8 py-3.5 rounded-[10px] hover:bg-secondary hover:shadow-lg transition-all duration-300"
+            className="inline-flex w-full sm:w-auto items-center justify-center gap-2 bg-card text-primary font-medium text-sm tracking-wide uppercase px-8 py-3.5 rounded-[10px] hover:bg-secondary hover:shadow-lg transition-all duration-300"
           >
             Estimer mes travaux
             <ArrowRight size={16} />

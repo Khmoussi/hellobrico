@@ -46,7 +46,7 @@ export function Hero() {
       />
 
       {/* Content */}
-      <div className="relative z-10 mx-auto max-w-[1280px] w-full px-6 py-32 md:py-0">
+      <div className="relative z-10 mx-auto max-w-[1280px] w-full px-6 py-28 sm:py-32 md:py-0">
         <div className="max-w-xl md:text-left text-center mx-auto md:mx-0">
           {/* H1 */}
           <h1
@@ -100,7 +100,7 @@ export function Hero() {
           >
             <Link
               href="/estimation"
-              className="inline-flex items-center justify-center bg-card text-primary font-medium text-sm tracking-wide uppercase px-8 py-3.5 rounded-[10px] hover:bg-secondary hover:shadow-lg transition-all duration-300"
+              className="inline-flex w-full sm:w-auto items-center justify-center bg-card text-primary font-medium text-sm tracking-wide uppercase px-8 py-3.5 rounded-[10px] hover:bg-secondary hover:shadow-lg transition-all duration-300"
             >
               Estimer mes travaux
             </Link>
@@ -134,7 +134,7 @@ export function Hero() {
           isVisible ? "animate-fade-up delay-400" : "opacity-0"
         }`}
       >
-        <div className="bg-card/85 backdrop-blur-sm rounded-2xl shadow-lg px-5 py-3 flex items-center gap-3">
+        <div className="max-w-[calc(100vw-2rem)] bg-card/85 backdrop-blur-sm rounded-2xl shadow-lg px-4 py-3 flex items-center gap-3">
           <div className="flex gap-0.5">
             {[...Array(5)].map((_, i) => (
               <Star key={i} size={14} className="fill-amber-400 text-amber-400" />

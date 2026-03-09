@@ -28,7 +28,7 @@ function AdminContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <AdminSidebar />
-      <main className="flex-1 bg-background overflow-y-auto">{children}</main>
+      <main className="flex-1 bg-background overflow-y-auto lg:ml-[272px]">{children}</main>
     </div>
   )
 }

@@ -13,38 +13,105 @@ import { useRouter, usePathname } from "next/navigation"
 interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
-  user: { email: string; name: string } | null
+  user: AuthUser | null
+  token: string | null
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
 }
 
+export type AdminRole = "ADMIN" | "COMMERCIAL" | "SUPERVISOR"
+
+export interface AuthUser {
+  id: string
+  email: string
+  name: string
+  role: AdminRole
+}
+
+const ALLOWED_ADMIN_ROUTES: Record<AdminRole, string[]> = {
+  ADMIN: [
+    "/admin",
+    "/admin/leads",
+    "/admin/projects",
+    "/admin/quotes",
+    "/admin/magazine",
+    "/admin/settings",
+  ],
+  COMMERCIAL: ["/admin", "/admin/leads", "/admin/projects", "/admin/quotes"],
+  SUPERVISOR: ["/admin", "/admin/projects"],
+}
+
+const normalizeRole = (role?: string): AdminRole => {
+  const value = (role || "").trim().toUpperCase()
+  if (value === "COMMERCIAL") return "COMMERCIAL"
+  if (value === "SUPERVISOR") return "SUPERVISOR"
+  return "ADMIN"
+}
+
+export const canAccessAdminRoute = (role: AdminRole, pathname: string): boolean => {
+  const allowed = ALLOWED_ADMIN_ROUTES[role]
+  return allowed.some((route) => (route === "/admin" ? pathname === "/admin" : pathname.startsWith(route)))
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Demo credentials for frontend-only auth
-const DEMO_EMAIL = "admin@hellobrico.tn"
-const DEMO_PASSWORD = "admin123"
 const AUTH_KEY = "hb_admin_auth"
+import { api } from "@/lib/api"
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [user, setUser] = useState<{ email: string; name: string } | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [token, setToken] = useState<string | null>(null)
   const router = useRouter()
   const pathname = usePathname()
 
   // Check session on mount
   useEffect(() => {
-    const stored = sessionStorage.getItem(AUTH_KEY)
-    if (stored) {
+    const bootstrapSession = async () => {
+      const stored = sessionStorage.getItem(AUTH_KEY)
+      if (!stored) {
+        setIsLoading(false)
+        return
+      }
+
       try {
         const parsed = JSON.parse(stored)
-        setUser(parsed)
+        const savedToken = parsed.token as string | undefined
+        const savedUser = parsed.user as AuthUser | undefined
+
+        if (!savedToken || !savedUser) {
+          sessionStorage.removeItem(AUTH_KEY)
+          setIsLoading(false)
+          return
+        }
+
+        const meRes = await api.auth.me(savedToken)
+        if (meRes.error || !meRes.data) {
+          sessionStorage.removeItem(AUTH_KEY)
+          setIsLoading(false)
+          return
+        }
+
+        const userData: AuthUser = {
+          id: meRes.data.id || savedUser.id || "",
+          email: meRes.data.email || savedUser.email,
+          name: meRes.data.name || savedUser.name || "Admin",
+          role: normalizeRole(meRes.data.role || savedUser.role),
+        }
+
+        setUser(userData)
+        setToken(savedToken)
         setIsAuthenticated(true)
+        sessionStorage.setItem(AUTH_KEY, JSON.stringify({ user: userData, token: savedToken }))
       } catch {
         sessionStorage.removeItem(AUTH_KEY)
+      } finally {
+        setIsLoading(false)
       }
     }
-    setIsLoading(false)
+
+    void bootstrapSession()
   }, [])
 
   // Redirect logic
@@ -63,28 +130,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, isLoading, pathname, router])
 
   const login = useCallback(async (email: string, password: string) => {
-    // Simulate API call delay
-    await new Promise((r) => setTimeout(r, 800))
+    try {
+      const response = await api.auth.login(email, password)
 
-    if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
-      const userData = { email, name: "Admin HelloBrico" }
-      setUser(userData)
-      setIsAuthenticated(true)
-      sessionStorage.setItem(AUTH_KEY, JSON.stringify(userData))
-      return true
+      if (response.data) {
+        const tokenStr = response.data.accessToken?.token || response.data.accessToken?.token || ''
+        const userData: AuthUser = {
+          id: response.data.user?.id || "",
+          email: response.data.user?.email || email, 
+          name: response.data.user?.name || "Admin",
+          role: normalizeRole(response.data.user?.role),
+        }
+        setUser(userData)
+        setToken(tokenStr)
+        setIsAuthenticated(true)
+        sessionStorage.setItem(AUTH_KEY, JSON.stringify({ user: userData, token: tokenStr }))
+        return true
+      }
+      return false
+    } catch (err) {
+      console.error("Login error:", err)
+      return false
     }
-    return false
   }, [])
 
   const logout = useCallback(() => {
     setUser(null)
+    setToken(null)
     setIsAuthenticated(false)
     sessionStorage.removeItem(AUTH_KEY)
     router.replace("/admin/login")
   }, [router])
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

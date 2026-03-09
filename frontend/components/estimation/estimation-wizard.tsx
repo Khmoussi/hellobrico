@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Upload, ArrowLeft } from "lucide-react"
+import { Check, Upload, ArrowLeft, Loader2, X } from "lucide-react"
 import Link from "next/link"
+import { API_BASE_URL } from "@/lib/api"
 
 const typologies = ["Appartement", "Villa", "Bureau", "Local commercial"]
 const renovationTypes = [
@@ -39,6 +40,12 @@ export function EstimationWizard() {
   const [email, setEmail] = useState("")
   const [abroad, setAbroad] = useState(false)
 
+  const [files, setFiles] = useState<{ id: string; name: string }[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [apiError, setApiError] = useState<string | null>(null)
+
   const [submitted, setSubmitted] = useState(false)
 
   const toggleRenovation = (item: string) => {
@@ -47,8 +54,205 @@ export function EstimationWizard() {
     )
   }
 
-  const handleSubmit = () => {
-    setSubmitted(true)
+  const validateStep1 = () => {
+    const newErrors: Record<string, string> = {}
+    if (!address.trim()) newErrors.address = "L'adresse est requise"
+    if (!typology) newErrors.typology = "Veuillez sélectionner une typologie"
+    if (renovations.length === 0) newErrors.renovations = "Veuillez sélectionner au moins un type de rénovation"
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const validateStep3 = () => {
+    const newErrors: Record<string, string> = {}
+    if (!name.trim()) newErrors.name = "Le nom est requis"
+    
+    // Strict phone validation for +216 or general international format to satisfy backend @IsPhoneNumber()
+    const phoneRegex = /^\+[1-9]\d{6,14}$/
+    if (!phone.trim()) {
+      newErrors.phone = "Le téléphone est requis"
+    } else if (!phoneRegex.test(phone.replace(/\s+/g, ""))) {
+      newErrors.phone = "Le téléphone doit être au format international (ex: +216 20 123 456)"
+    }
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!email.trim() || !emailRegex.test(email)) newErrors.email = "Un email valide est requis"
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleNextStep1 = () => {
+    if (validateStep1()) {
+      setErrors({})
+      setStep(1)
+    }
+  }
+
+  const handleNextStep2 = () => {
+    setErrors({})
+    setStep(2)
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files
+    if (!selectedFiles || selectedFiles.length === 0) return
+
+    setIsUploading(true)
+    const formData = new FormData()
+    Array.from(selectedFiles).forEach((file) => {
+      formData.append("files", file)
+    })
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/files/upload-multiple`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (response.ok) {
+        const contentType = response.headers.get("content-type")
+        if (contentType && contentType.includes("application/json")) {
+          const data = await response.json()
+          setFiles((prev) => [
+            ...prev,
+            ...data.map((f: any) => ({
+              id: f.id,
+              name: f.filename || f.originalname || "Fichier",
+            })),
+          ])
+        } else {
+          console.error("Upload succeeded but returned non-JSON response")
+          // If we can't parse the response, we might not have the IDs
+          setApiError("Fichiers envoyés mais la réponse serveur est invalide.")
+        }
+      } else {
+        console.error("Failed to upload files, status:", response.status)
+        setApiError("Erreur lors de l'envoi des fichiers.")
+      }
+    } catch (error) {
+      console.error("Upload error:", error)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const removeFile = (id: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== id))
+  }
+
+  const getPropertyTypeMap = (type: string) => {
+    switch (type) {
+      case "Appartement":
+        return "APPARTEMENT"
+      case "Villa":
+        return "VILLA"
+      case "Bureau":
+        return "BUREAU"
+      case "Local commercial":
+        return "LOCAL_COMMERCIAL"
+      default:
+        return "APPARTEMENT"
+    }
+  }
+
+  const getRenovationTypeMap = (type: string) => {
+    switch (type) {
+      case "Salle de bain":
+        return "SALLE_DE_BAIN"
+      case "Cuisine":
+        return "CUISINE"
+      case "Rénovation complète":
+        return "RENOVATION_COMPLETE"
+      case "Bureau / Local":
+        return "BUREAU_LOCAL"
+      default:
+        return undefined
+    }
+  }
+
+  const getBudgetBracketMap = (bg: string) => {
+    switch (bg) {
+      case "Moins de 20 000 DT":
+        return "MOINS_20000"
+      case "20 000 – 50 000 DT":
+        return "BETWEEN_20000_50000"
+      case "50 000 DT +":
+        return "PLUS_50000"
+      case "À définir":
+        return "A_DEFINIR"
+      default:
+        return "A_DEFINIR"
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!validateStep3()) return
+
+    setIsSubmitting(true)
+    setApiError(null)
+
+    const payload = {
+      projectAddress: address,
+      propertyType: getPropertyTypeMap(typology),
+      renovationTypes: renovations.map(getRenovationTypeMap).filter(Boolean),
+      surfaceM2: surface ? parseInt(surface, 10) : undefined,
+      budgetBracket: budget ? getBudgetBracketMap(budget) : undefined,
+      description: description || undefined,
+      fullName: name,
+      phone: phone.replace(/\s+/g, ""), // strip spaces for backend
+      email: email,
+      isAbroad: abroad,
+      fileIds: files.map((f) => f.id),
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/leads`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (response.ok) {
+        setSubmitted(true)
+      } else {
+        const contentType = response.headers.get("content-type")
+        let errorMessage = "Une erreur s'est produite lors de l'envoi de votre demande."
+        
+        if (contentType && contentType.includes("application/json")) {
+          try {
+            const errorData = await response.json()
+            if (Array.isArray(errorData.message)) {
+              // Parse nested constraint objects if they exist
+              errorMessage = errorData.message.map((err: any) => {
+                if (typeof err === "string") return err;
+                if (err && typeof err === "object" && err.constraints) {
+                  return Object.values(err.constraints).join(", ")
+                }
+                if (err && typeof err === "object" && err.property) {
+                  return `Erreur sur le champ: ${err.property}`
+                }
+                return JSON.stringify(err)
+              }).join("; ")
+            } else {
+              errorMessage = errorData.message || errorMessage
+            }
+          } catch (e) {
+            console.error("Failed to parse error JSON", e)
+          }
+        } else {
+          console.error("Received non-JSON error response from server", await response.text().catch(() => ""))
+        }
+        
+        setApiError(errorMessage)
+      }
+    } catch (error) {
+      console.error("Submit error:", error)
+      setApiError("Erreur de connexion au serveur. Veuillez réessayer plus tard.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (submitted) {
@@ -130,30 +334,41 @@ export function EstimationWizard() {
               {/* Address */}
               <div>
                 <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Adresse du logement ou local
+                  Adresse du logement ou local <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => {
+                    setAddress(e.target.value)
+                    if (errors.address) setErrors({ ...errors, address: "" })
+                  }}
                   placeholder="Ville, quartier, résidence..."
-                  className="w-full px-4 py-3 bg-card border border-input rounded-xl text-foreground text-base placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                  className={`w-full px-4 py-3 bg-card border ${
+                    errors.address ? "border-red-500 focus:ring-red-500" : "border-input focus:border-primary focus:ring-primary"
+                  } rounded-xl text-foreground text-base placeholder:text-muted-foreground/50 focus:ring-1 outline-none transition-all`}
                 />
+                {errors.address && <p className="mt-1 text-xs text-red-500">{errors.address}</p>}
               </div>
 
               {/* Typology */}
               <div>
                 <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Typologie
+                  Typologie <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   {typologies.map((t) => (
                     <button
                       key={t}
-                      onClick={() => setTypology(t)}
+                      onClick={() => {
+                        setTypology(t)
+                        if (errors.typology) setErrors({ ...errors, typology: "" })
+                      }}
                       className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 ${
                         typology === t
                           ? "border-primary bg-primary/5 text-primary"
+                          : errors.typology
+                          ? "border-red-500/50 text-foreground hover:border-red-500"
                           : "border-input text-foreground hover:border-primary/30"
                       }`}
                     >
@@ -161,21 +376,27 @@ export function EstimationWizard() {
                     </button>
                   ))}
                 </div>
+                {errors.typology && <p className="mt-1 text-xs text-red-500">{errors.typology}</p>}
               </div>
 
               {/* Renovation type */}
               <div>
                 <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Type de rénovation
+                  Type de rénovation <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   {renovationTypes.map((r) => (
                     <button
                       key={r}
-                      onClick={() => toggleRenovation(r)}
+                      onClick={() => {
+                        toggleRenovation(r)
+                        if (errors.renovations) setErrors({ ...errors, renovations: "" })
+                      }}
                       className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm transition-all duration-200 ${
                         renovations.includes(r)
                           ? "border-primary bg-primary/5 text-primary"
+                          : errors.renovations
+                          ? "border-red-500/50 text-foreground hover:border-red-500"
                           : "border-input text-foreground hover:border-primary/30"
                       }`}
                     >
@@ -194,13 +415,14 @@ export function EstimationWizard() {
                     </button>
                   ))}
                 </div>
+                {errors.renovations && <p className="mt-1 text-xs text-red-500">{errors.renovations}</p>}
               </div>
 
               <button
-                onClick={() => setStep(1)}
-                className="w-full bg-primary text-primary-foreground font-medium text-sm tracking-wide uppercase py-3.5 rounded-[10px] hover:bg-[#0A1F35] transition-all duration-300"
+                onClick={handleNextStep1}
+                className="w-full bg-primary text-primary-foreground font-medium text-sm tracking-wide py-3.5 rounded-[10px] hover:bg-[#0A1F35] transition-all duration-300"
               >
-                Continuer
+                Continuer →
               </button>
             </div>
           )}
@@ -258,15 +480,52 @@ export function EstimationWizard() {
                 <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
                   Fichiers
                 </label>
-                <div className="border-2 border-dashed border-input rounded-xl p-8 text-center bg-secondary/30 hover:bg-secondary/50 hover:border-primary/30 transition-all duration-200 cursor-pointer">
-                  <Upload size={24} className="mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    {"Ajoutez des plans, photos ou vidéos de l'espace actuel"}
-                  </p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">
-                    {"Glissez-déposez ou cliquez pour parcourir"}
-                  </p>
+                <div className="relative border-2 border-dashed border-input rounded-xl p-8 text-center bg-secondary/30 hover:bg-secondary/50 hover:border-primary/30 transition-all duration-200 cursor-pointer">
+                  <input
+                    type="file"
+                    multiple
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    onChange={handleFileUpload}
+                    disabled={isUploading}
+                  />
+                  {isUploading ? (
+                    <div className="flex flex-col items-center justify-center">
+                      <Loader2 className="animate-spin text-primary mb-2" size={24} />
+                      <p className="text-sm text-foreground">Téléchargement...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload size={24} className="mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        {"Ajoutez des plans, photos ou vidéos de l'espace actuel"}
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">
+                        {"Glissez-déposez ou cliquez pour parcourir"}
+                      </p>
+                    </>
+                  )}
                 </div>
+
+                {files.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {files.map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center justify-between p-3 bg-secondary/30 border border-border rounded-lg"
+                      >
+                        <span className="text-sm text-foreground truncate max-w-[200px] md:max-w-[300px]">
+                          {file.name}
+                        </span>
+                        <button
+                          onClick={() => removeFile(file.id)}
+                          className="text-muted-foreground hover:text-red-500 transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Description */}
@@ -292,10 +551,10 @@ export function EstimationWizard() {
                   Retour
                 </button>
                 <button
-                  onClick={() => setStep(2)}
-                  className="flex-1 bg-primary text-primary-foreground font-medium text-sm tracking-wide uppercase py-3.5 rounded-[10px] hover:bg-[#0A1F35] transition-all duration-300"
+                  onClick={handleNextStep2}
+                  className="flex-1 bg-primary text-primary-foreground font-medium text-sm tracking-wide py-3.5 rounded-[10px] hover:bg-[#0A1F35] transition-all duration-300"
                 >
-                  Continuer
+                  Continuer →
                 </button>
               </div>
             </div>
@@ -310,41 +569,59 @@ export function EstimationWizard() {
 
               <div>
                 <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Nom complet
+                  Nom complet <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    if (errors.name) setErrors({ ...errors, name: "" })
+                  }}
                   placeholder="Votre nom"
-                  className="w-full px-4 py-3 bg-card border border-input rounded-xl text-foreground text-base placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                  className={`w-full px-4 py-3 bg-card border ${
+                    errors.name ? "border-red-500 focus:ring-red-500" : "border-input focus:border-primary focus:ring-primary"
+                  } rounded-xl text-foreground text-base placeholder:text-muted-foreground/50 focus:ring-1 outline-none transition-all`}
                 />
+                {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
               </div>
 
               <div>
                 <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Téléphone / WhatsApp
+                  Téléphone / WhatsApp <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    setPhone(e.target.value)
+                    if (errors.phone) setErrors({ ...errors, phone: "" })
+                  }}
                   placeholder="+216 XX XXX XXX"
-                  className="w-full px-4 py-3 bg-card border border-input rounded-xl text-foreground text-base placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                  className={`w-full px-4 py-3 bg-card border ${
+                    errors.phone ? "border-red-500 focus:ring-red-500" : "border-input focus:border-primary focus:ring-primary"
+                  } rounded-xl text-foreground text-base placeholder:text-muted-foreground/50 focus:ring-1 outline-none transition-all`}
                 />
+                {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
               </div>
 
               <div>
                 <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Email
+                  Email <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (errors.email) setErrors({ ...errors, email: "" })
+                  }}
                   placeholder="votre@email.com"
-                  className="w-full px-4 py-3 bg-card border border-input rounded-xl text-foreground text-base placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                  className={`w-full px-4 py-3 bg-card border ${
+                    errors.email ? "border-red-500 focus:ring-red-500" : "border-input focus:border-primary focus:ring-primary"
+                  } rounded-xl text-foreground text-base placeholder:text-muted-foreground/50 focus:ring-1 outline-none transition-all`}
                 />
+                {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
               </div>
 
               {/* Abroad checkbox */}
@@ -385,11 +662,25 @@ export function EstimationWizard() {
                 </button>
                 <button
                   onClick={handleSubmit}
-                  className="flex-1 bg-primary text-primary-foreground font-medium text-sm tracking-wide uppercase py-3.5 rounded-[10px] hover:bg-[#0A1F35] transition-all duration-300"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-primary text-primary-foreground font-medium text-sm tracking-wide py-3.5 rounded-[10px] hover:bg-[#0A1F35] transition-all duration-300 disabled:opacity-50 flex items-center justify-center"
                 >
-                  Recevoir mon estimation
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin mr-2" />
+                      Envoi en cours...
+                    </>
+                  ) : (
+                    "Recevoir mon estimation"
+                  )}
                 </button>
               </div>
+
+              {apiError && (
+                <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm text-center">
+                  {apiError}
+                </div>
+              )}
               <p className="text-xs text-center text-muted-foreground">
                 {"Réponse rapide • Sans engagement • Étude structurée"}
               </p>

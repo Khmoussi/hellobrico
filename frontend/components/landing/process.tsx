@@ -89,7 +89,7 @@ export function Process() {
   const ActiveIcon = steps[activeStep].icon
 
   return (
-    <section ref={sectionRef} className="bg-[#f7f8fa] py-20 md:py-28 overflow-hidden">
+    <section ref={sectionRef} className="bg-background py-20 md:py-28 overflow-hidden">
       <div className="mx-auto max-w-[1280px] px-6">
         {/* Header — inspired by artisans-de-confiance clean style */}
         <div
@@ -110,7 +110,7 @@ export function Process() {
         </div>
 
         {/* ━━━ Desktop: left steps + right detail ━━━ */}
-        <div className="hidden md:grid md:grid-cols-[1fr_1fr] gap-10 lg:gap-16 items-start">
+        <div className="hidden lg:grid lg:grid-cols-[1fr_1fr] gap-10 xl:gap-16 items-start">
           {/* Left column: 2×3 grid of step cards */}
           <div className="grid grid-cols-2 gap-3">
             {steps.map((step, index) => {
@@ -293,7 +293,7 @@ export function Process() {
         </div>
 
         {/* ━━━ Mobile: vertical timeline ━━━ */}
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <div className="relative">
             {/* Timeline line */}
             <div className="absolute left-[15px] top-0 bottom-0 w-px bg-border" />
@@ -359,7 +359,7 @@ export function Process() {
                     {/* Expanded detail */}
                     <div
                       className={`overflow-hidden transition-all duration-300 ${
-                        isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                        isOpen ? "max-h-[680px] opacity-100" : "max-h-0 opacity-0"
                       }`}
                     >
                       <div className="ml-[46px] pb-4">
@@ -403,7 +403,7 @@ export function Process() {
         >
           <Link
             href="/estimation"
-            className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground font-medium text-sm tracking-wide uppercase px-8 py-3.5 rounded-[10px] hover:bg-[#0A1F35] transition-all duration-300 shadow-lg shadow-primary/15"
+            className="inline-flex w-full sm:w-auto items-center justify-center gap-2 bg-primary text-primary-foreground font-medium text-sm tracking-wide uppercase px-8 py-3.5 rounded-[10px] hover:bg-[#0A1F35] transition-all duration-300 shadow-lg shadow-primary/15"
           >
             Estimer mes travaux
             <ArrowRight size={16} />

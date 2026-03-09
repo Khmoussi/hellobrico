@@ -1,346 +1,379 @@
 "use client"
 
-import { useState } from "react"
-import { Save, User, Building2, Bell, Shield, Globe, Palette } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Loader2, Plus, Save, Users } from "lucide-react"
+import {
+  api,
+  ARTICLE_CATEGORIES,
+  ARTICLE_CATEGORY_LABELS,
+  type AdminUserDto,
+  type ArticleCategory,
+} from "@/lib/api"
+import { useAuth } from "@/components/admin/auth-context"
+import { toast } from "@/hooks/use-toast"
+
+type AppSettings = {
+  quoteSenderEmail: string
+  supportPhone: string
+  magazineCategories: string[]
+}
+
+type RoleToCreate = "COMMERCIAL" | "SUPERVISOR"
+
+const SETTINGS_STORAGE_KEY = "hb_admin_settings_v1"
+
+const defaultSettings: AppSettings = {
+  quoteSenderEmail: "devis@hellobrico.tn",
+  supportPhone: "+216 XX XXX XXX",
+  magazineCategories: [...ARTICLE_CATEGORIES],
+}
+
+const roleLabel: Record<string, string> = {
+  ADMIN: "Admin principal",
+  COMMERCIAL: "Commercial",
+  SUPERVISOR: "Superviseur",
+}
 
 export default function AdminSettings() {
-  const [activeTab, setActiveTab] = useState("general")
+  const { token } = useAuth()
 
-  const tabs = [
-    { id: "general", label: "Général", icon: Building2 },
-    { id: "profile", label: "Profil", icon: User },
-    { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "seo", label: "SEO", icon: Globe },
-    { id: "security", label: "Sécurité", icon: Shield },
-    { id: "appearance", label: "Apparence", icon: Palette },
-  ]
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings)
+
+  const [users, setUsers] = useState<AdminUserDto[]>([])
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const [newUserRole, setNewUserRole] = useState<RoleToCreate>("COMMERCIAL")
+  const [newUserFirstName, setNewUserFirstName] = useState("")
+  const [newUserLastName, setNewUserLastName] = useState("")
+  const [newUserPhone, setNewUserPhone] = useState("")
+  const [newUserEmail, setNewUserEmail] = useState("")
+  const [newUserPassword, setNewUserPassword] = useState("")
+
+  useEffect(() => {
+    const stored = localStorage.getItem(SETTINGS_STORAGE_KEY)
+    if (!stored) return
+
+    try {
+      const parsed = JSON.parse(stored) as Partial<AppSettings>
+      const persistedSource = Array.isArray(parsed.magazineCategories)
+        ? parsed.magazineCategories
+        : undefined
+      const hasPersistedCategories = Boolean(persistedSource)
+      const persistedCategories = persistedSource
+        ? persistedSource.filter((cat) => ARTICLE_CATEGORIES.includes(cat as ArticleCategory))
+        : []
+
+      setSettings((prev) => ({
+        quoteSenderEmail: parsed.quoteSenderEmail || prev.quoteSenderEmail,
+        supportPhone: parsed.supportPhone || prev.supportPhone,
+        magazineCategories: hasPersistedCategories ? persistedCategories : prev.magazineCategories,
+      }))
+    } catch {
+      // Keep defaults if local storage is malformed.
+    }
+  }, [])
+
+  const loadUsers = async () => {
+    if (!token) return
+    setIsLoadingUsers(true)
+
+    try {
+      const res = await api.admin.users.getAll(token, 1, 200)
+      if (res.error) throw new Error(res.error)
+      const mapped = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray((res.data as any)?.data)
+          ? (res.data as any).data
+          : []
+      setUsers(mapped as AdminUserDto[])
+    } catch (error) {
+      console.error("Failed to load users:", error)
+      setUsers([])
+      toast({
+        title: "Chargement impossible",
+        description: "Impossible de recuperer les comptes admin.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingUsers(false)
+    }
+  }
+
+  useEffect(() => {
+    loadUsers()
+  }, [token])
+
+  const sortedCategories = useMemo(() => {
+    return [...settings.magazineCategories].sort((a, b) => a.localeCompare(b, "fr"))
+  }, [settings.magazineCategories])
+
+  const saveSettings = () => {
+    if (!settings.quoteSenderEmail.includes("@")) {
+      toast({
+        title: "Email invalide",
+        description: "Saisissez une adresse email valide pour les devis.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!settings.supportPhone.trim()) {
+      toast({
+        title: "Telephone requis",
+        description: "Renseignez un numero de telephone.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
+    toast({
+      title: "Parametres enregistres",
+      description: "Configuration devis et magazine mise a jour.",
+    })
+  }
+
+  const toggleCategory = (category: ArticleCategory) => {
+    setSettings((prev) => {
+      const exists = prev.magazineCategories.includes(category)
+      const nextSettings: AppSettings = exists
+        ? {
+            ...prev,
+            magazineCategories: prev.magazineCategories.filter((cat) => cat !== category),
+          }
+        : {
+            ...prev,
+            magazineCategories: [...prev.magazineCategories, category],
+          }
+
+      // Persist immediately to keep category selection after refresh.
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings))
+
+      if (exists) {
+        return nextSettings
+      }
+      return nextSettings
+    })
+  }
+
+  const resetNewUserForm = () => {
+    setNewUserFirstName("")
+    setNewUserLastName("")
+    setNewUserPhone("")
+    setNewUserEmail("")
+    setNewUserPassword("")
+  }
+
+  const createUser = async () => {
+    if (!token) return
+
+    if (!newUserFirstName.trim() || !newUserLastName.trim() || !newUserEmail.trim() || !newUserPassword.trim() || !newUserPhone.trim()) {
+      toast({
+        title: "Champs requis",
+        description: "Renseignez prenom, nom, telephone, email et mot de passe.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const payload = {
+        firstName: newUserFirstName.trim(),
+        lastName: newUserLastName.trim(),
+        email: newUserEmail.trim(),
+        password: newUserPassword,
+        phone: newUserPhone.trim(),
+      }
+
+      const res =
+        newUserRole === "COMMERCIAL"
+          ? await api.admin.users.createCommercial(payload, token)
+          : await api.admin.users.createSupervisor(payload, token)
+
+      if (res.error) throw new Error(res.error)
+
+      toast({
+        title: "Compte cree",
+        description: `${roleLabel[newUserRole]} ajoute avec succes.`,
+      })
+      resetNewUserForm()
+      await loadUsers()
+    } catch (error) {
+      console.error("Create admin user failed:", error)
+      toast({
+        title: "Creation impossible",
+        description: "Erreur lors de la creation du compte.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1000px]">
-      <div className="mb-8">
-        <h1 className="font-serif text-2xl md:text-3xl font-bold text-foreground">
-          {"Paramètres"}
-        </h1>
+    <div className="p-6 lg:p-8 max-w-[1200px] space-y-6">
+      <div>
+        <h1 className="font-serif text-2xl md:text-3xl font-bold text-foreground">Parametres</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {"Configurez les paramètres de votre site et de votre compte"}
+          Configurez les canaux devis, les categories magazine et les comptes admin.
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 mb-8 bg-muted/50 rounded-xl p-1">
-        {tabs.map((tab) => {
-          const Icon = tab.icon
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activeTab === tab.id
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+      <section className="bg-card border border-border rounded-xl p-6">
+        <h2 className="text-sm font-semibold text-foreground mb-4">Configuration devis et contact</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InputField
+            label="Adresse email pour envoi devis"
+            value={settings.quoteSenderEmail}
+            onChange={(value) => setSettings((prev) => ({ ...prev, quoteSenderEmail: value }))}
+            placeholder="devis@hellobrico.tn"
+          />
+          <InputField
+            label="Numero telephone"
+            value={settings.supportPhone}
+            onChange={(value) => setSettings((prev) => ({ ...prev, supportPhone: value }))}
+            placeholder="+216 XX XXX XXX"
+          />
+        </div>
+
+        <div className="mt-4">
+          <button
+            onClick={saveSettings}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-[#0A1F35] transition-colors"
+          >
+            <Save size={14} />
+            Enregistrer
+          </button>
+        </div>
+      </section>
+
+      <section className="bg-card border border-border rounded-xl p-6">
+        <h2 className="text-sm font-semibold text-foreground mb-4">Categories magazine</h2>
+        <p className="text-xs text-muted-foreground mb-3">
+          Activez uniquement les categories supportees par le backend magazine.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {ARTICLE_CATEGORIES.map((category) => {
+            const checked = sortedCategories.includes(category)
+            return (
+              <button
+                key={category}
+                onClick={() => toggleCategory(category)}
+                className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  checked
+                    ? "border-primary bg-primary/5 text-foreground"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted/30"
+                }`}
+              >
+                <span>{ARTICLE_CATEGORY_LABELS[category]}</span>
+                <span className="text-xs">{checked ? "Actif" : "Inactif"}</span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="bg-card border border-border rounded-xl p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Users size={16} className="text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">Gestion des comptes admin</h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">Role</label>
+            <select
+              value={newUserRole}
+              onChange={(e) => setNewUserRole(e.target.value as RoleToCreate)}
+              className="w-full px-3 py-2.5 bg-background border border-input rounded-lg text-sm text-foreground focus:border-primary outline-none"
             >
-              <Icon size={14} />
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* General Tab */}
-      {activeTab === "general" && (
-        <div className="space-y-6">
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-foreground mb-4">{"Informations de l'entreprise"}</h2>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Nom de l'entreprise" defaultValue="HelloBrico" />
-                <InputField label="Téléphone" defaultValue="+216 XX XXX XXX" />
-              </div>
-              <InputField label="Email" defaultValue="contact@hellobrico.tn" />
-              <InputField label="Adresse" defaultValue="Tunis, Tunisie" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Registre de commerce" placeholder="RC-XXXXX" />
-                <InputField label="Matricule fiscale" placeholder="XXXXXXX/X/X/X" />
-              </div>
-            </div>
+              <option value="COMMERCIAL">Commercial</option>
+              <option value="SUPERVISOR">Superviseur</option>
+            </select>
           </div>
-
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-foreground mb-4">Réseaux sociaux</h2>
-            <div className="space-y-4">
-              <InputField label="Facebook" placeholder="https://facebook.com/hellobrico" />
-              <InputField label="Instagram" placeholder="https://instagram.com/hellobrico" />
-              <InputField label="LinkedIn" placeholder="https://linkedin.com/company/hellobrico" />
-            </div>
-          </div>
-
-          <button className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-[#0A1F35] transition-colors">
-            <Save size={14} />
-            Sauvegarder
-          </button>
+          <InputField label="Telephone" value={newUserPhone} onChange={setNewUserPhone} placeholder="+21612345678" />
+          <InputField label="Email" value={newUserEmail} onChange={setNewUserEmail} placeholder="nom@hellobrico.tn" />
+          <InputField label="Prenom" value={newUserFirstName} onChange={setNewUserFirstName} placeholder="Prenom" />
+          <InputField label="Nom" value={newUserLastName} onChange={setNewUserLastName} placeholder="Nom" />
         </div>
-      )}
 
-      {/* Profile Tab */}
-      {activeTab === "profile" && (
-        <div className="space-y-6">
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-foreground mb-4">Mon profil</h2>
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xl font-bold">
-                A
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Admin HelloBrico</p>
-                <p className="text-xs text-muted-foreground">admin@hellobrico.tn</p>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Prénom" defaultValue="Admin" />
-                <InputField label="Nom" defaultValue="HelloBrico" />
-              </div>
-              <InputField label="Email" defaultValue="admin@hellobrico.tn" />
-              <InputField label="Téléphone" defaultValue="+216 XX XXX XXX" />
-            </div>
-          </div>
-
-          <button className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-[#0A1F35] transition-colors">
-            <Save size={14} />
-            Mettre à jour
-          </button>
+        <div className="mb-5">
+          <InputField
+            label="Mot de passe initial"
+            value={newUserPassword}
+            onChange={setNewUserPassword}
+            placeholder="Minimum 8 caracteres"
+            type="password"
+          />
         </div>
-      )}
 
-      {/* Notifications Tab */}
-      {activeTab === "notifications" && (
-        <div className="space-y-6">
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-foreground mb-4">{"Préférences de notification"}</h2>
-            <div className="space-y-4">
-              <ToggleSetting
-                label="Nouveau lead"
-                description={"Recevoir un email à chaque nouvelle demande d'estimation"}
-                defaultChecked
-              />
-              <ToggleSetting
-                label="Rappel suivi"
-                description="Rappel quotidien des leads non contactés depuis 48h"
-                defaultChecked
-              />
-              <ToggleSetting
-                label="Mise à jour chantier"
-                description="Notification lors de mise à jour de photos sur un projet"
-                defaultChecked={false}
-              />
-              <ToggleSetting
-                label="Rapport hebdomadaire"
-                description="Résumé des KPIs chaque lundi matin"
-                defaultChecked
-              />
+        <button
+          onClick={createUser}
+          disabled={isSubmitting}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-[#0A1F35] disabled:opacity-60"
+        >
+          {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+          Creer le compte
+        </button>
+
+        <div className="mt-6 border-t border-border pt-4">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Comptes existants</p>
+          {isLoadingUsers ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 size={14} className="animate-spin" />
+              Chargement des comptes...
             </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-foreground mb-4">Canaux</h2>
-            <div className="space-y-4">
-              <ToggleSetting label="Email" description="Notifications par email" defaultChecked />
-              <ToggleSetting label="WhatsApp" description="Notifications par WhatsApp" defaultChecked={false} />
+          ) : users.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucun compte trouve.</p>
+          ) : (
+            <div className="space-y-2">
+              {users.map((user) => {
+                const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Sans nom"
+                return (
+                  <div key={user.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 rounded-lg border border-border px-3 py-2">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{fullName}</p>
+                      <p className="text-xs text-muted-foreground">{user.email || "-"}</p>
+                    </div>
+                    <span className="inline-flex w-fit rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
+                      {roleLabel[user.role || ""] || user.role || "-"}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
-          </div>
-
-          <button className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-[#0A1F35] transition-colors">
-            <Save size={14} />
-            Sauvegarder
-          </button>
+          )}
         </div>
-      )}
-
-      {/* SEO Tab */}
-      {activeTab === "seo" && (
-        <div className="space-y-6">
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-foreground mb-4">SEO global</h2>
-            <div className="space-y-4">
-              <InputField label="Titre du site" defaultValue="HelloBrico — Rénovation maîtrisée en Tunisie" />
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Meta description
-                </label>
-                <textarea
-                  defaultValue="Rénovation premium avec méthode : étude technique, devis détaillé, supervision quotidienne et suivi live du chantier."
-                  rows={3}
-                  className="w-full px-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
-                />
-              </div>
-              <InputField label="Mots-clés" defaultValue="rénovation tunisie, salle de bain, cuisine, hellobrico" />
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-foreground mb-4">Google Analytics</h2>
-            <InputField label="ID de suivi" placeholder="G-XXXXXXXXXX" />
-          </div>
-
-          <button className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-[#0A1F35] transition-colors">
-            <Save size={14} />
-            Sauvegarder
-          </button>
-        </div>
-      )}
-
-      {/* Security Tab */}
-      {activeTab === "security" && (
-        <div className="space-y-6">
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-foreground mb-4">Changer le mot de passe</h2>
-            <div className="space-y-4">
-              <InputField label="Mot de passe actuel" type="password" placeholder="••••••••" />
-              <InputField label="Nouveau mot de passe" type="password" placeholder="••••••••" />
-              <InputField label="Confirmer le mot de passe" type="password" placeholder="••••••••" />
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-foreground mb-4">{"Sessions actives"}</h2>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-2">
-                <div>
-                  <p className="text-sm text-foreground">{"Chrome — macOS"}</p>
-                  <p className="text-xs text-muted-foreground">{"Tunis, Tunisie — Dernière activité: maintenant"}</p>
-                </div>
-                <span className="text-xs text-green-600 font-medium">Actif</span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-t border-border">
-                <div>
-                  <p className="text-sm text-foreground">{"Safari — iPhone"}</p>
-                  <p className="text-xs text-muted-foreground">{"Tunis, Tunisie — Il y a 2 heures"}</p>
-                </div>
-                <button className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors">
-                  Révoquer
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <button className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-[#0A1F35] transition-colors">
-            <Save size={14} />
-            Mettre à jour
-          </button>
-        </div>
-      )}
-
-      {/* Appearance Tab */}
-      {activeTab === "appearance" && (
-        <div className="space-y-6">
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-foreground mb-4">Apparence du site</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Logo
-                </label>
-                <div className="border-2 border-dashed border-input rounded-xl p-6 text-center hover:border-primary/30 transition-colors cursor-pointer">
-                  <p className="text-sm text-muted-foreground">{"Déposez votre logo ici"}</p>
-                  <p className="text-xs text-muted-foreground/50 mt-1">SVG, PNG ou JPG (max 2MB)</p>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Couleur principale
-                </label>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary border border-border" />
-                  <input
-                    type="text"
-                    defaultValue="#0E2A47"
-                    className="px-3 py-2 bg-card border border-input rounded-lg text-sm text-foreground font-mono w-[120px] focus:border-primary outline-none"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Couleur accent
-                </label>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent border border-border" />
-                  <input
-                    type="text"
-                    defaultValue="#6B3F2B"
-                    className="px-3 py-2 bg-card border border-input rounded-lg text-sm text-foreground font-mono w-[120px] focus:border-primary outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-[#0A1F35] transition-colors">
-            <Save size={14} />
-            Sauvegarder
-          </button>
-        </div>
-      )}
+      </section>
     </div>
   )
 }
 
 function InputField({
   label,
-  defaultValue,
+  value,
+  onChange,
   placeholder,
   type = "text",
 }: {
   label: string
-  defaultValue?: string
+  value: string
+  onChange: (value: string) => void
   placeholder?: string
   type?: string
 }) {
   return (
     <div>
-      <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">
-        {label}
-      </label>
+      <label className="block text-xs uppercase tracking-wider text-muted-foreground mb-2">{label}</label>
       <input
         type={type}
-        defaultValue={defaultValue}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-4 py-3 bg-card border border-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground/40 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+        className="w-full px-3 py-2.5 bg-background border border-input rounded-lg text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary outline-none"
       />
-    </div>
-  )
-}
-
-function ToggleSetting({
-  label,
-  description,
-  defaultChecked,
-}: {
-  label: string
-  description: string
-  defaultChecked?: boolean
-}) {
-  const [checked, setChecked] = useState(defaultChecked ?? false)
-  return (
-    <div className="flex items-center justify-between py-2">
-      <div>
-        <p className="text-sm font-medium text-foreground">{label}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-      </div>
-      <button
-        onClick={() => setChecked(!checked)}
-        className={`relative w-10 h-6 rounded-full transition-colors duration-200 ${
-          checked ? "bg-primary" : "bg-muted"
-        }`}
-        role="switch"
-        aria-checked={checked}
-      >
-        <div
-          className={`absolute top-1 w-4 h-4 rounded-full bg-card shadow-sm transition-transform duration-200 ${
-            checked ? "translate-x-5" : "translate-x-1"
-          }`}
-        />
-      </button>
     </div>
   )
 }
