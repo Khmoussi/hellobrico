@@ -351,7 +351,34 @@ class ApiClient {
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
 
-      const data = await response.json()
+      // Check if response has content before parsing JSON
+      const contentType = response.headers.get('content-type')
+      let data = null
+      
+      if (contentType && contentType.includes('application/json')) {
+        // Only try to parse JSON if content-type is JSON
+        const text = await response.text()
+        if (text.trim()) {
+          try {
+            data = JSON.parse(text)
+          } catch (parseError) {
+            console.error('JSON Parse Error:', parseError)
+            console.error('Response text:', text)
+            throw new Error(`Invalid JSON response: ${text}`)
+          }
+        } else {
+          // Empty response for successful operations (like DELETE)
+          data = { success: true }
+        }
+      } else {
+        // Handle non-JSON responses
+        const text = await response.text()
+        if (text.trim()) {
+          throw new Error(`Non-JSON response: ${text}`)
+        } else {
+          data = { success: true }
+        }
+      }
       
       return data && data.data !== undefined ? data : { data }
     } catch (error) {
