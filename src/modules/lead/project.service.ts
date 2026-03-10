@@ -8,9 +8,12 @@ import { LeadStatus } from '../../constants/lead-status.ts';
 import { ProjectStatus } from '../../constants/project-status.ts';
 import { ProjectStep } from '../../constants/project-step-status.ts';
 import type { AddProjectNoteDto } from './dtos/add-project-note.dto.ts';
+import type { AssignSupervisorDto } from './dtos/assign-supervisor.dto.ts';
 import { ProjectDto } from './dtos/project.dto.ts';
+import { ProjectNoteDto } from './dtos/project-note.dto.ts';
 import type { ProjectsPageOptionsDto } from './dtos/projects-page-options.dto.ts';
 import type { UpdateProjectStepDto } from './dtos/update-project-step.dto.ts';
+import type { UpdateProjectStatusDto } from './dtos/update-project-status.dto.ts';
 import { LeadEntity } from './entities/lead.entity.ts';
 import { ProjectEntity } from './entities/project.entity.ts';
 import { ProjectNoteEntity } from './entities/project-note.entity.ts';
@@ -179,7 +182,23 @@ export class ProjectService {
     return this.getProjectById(projectId);
   }
 
-  async assignSupervisor(projectId: Uuid, userId: Uuid): Promise<ProjectDto> {
+  async updateProjectStatus(
+    id: Uuid,
+    dto: UpdateProjectStatusDto,
+  ): Promise<ProjectDto> {
+    const project = await this.projectRepository.findOne({ where: { id } });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    project.status = dto.status;
+    await this.projectRepository.save(project);
+
+    return this.getProjectById(id);
+  }
+
+  async getProjectNotes(projectId: Uuid): Promise<ProjectNoteDto[]> {
     const project = await this.projectRepository.findOne({
       where: { id: projectId },
     });
@@ -188,7 +207,30 @@ export class ProjectService {
       throw new NotFoundException('Project not found');
     }
 
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const notes = await this.projectNoteRepository.find({
+      where: { project: { id: projectId } },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return notes.map((n) => new ProjectNoteDto(n));
+  }
+
+  async assignSupervisor(
+    projectId: Uuid,
+    dto: AssignSupervisorDto,
+  ): Promise<ProjectDto> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: dto.supervisorId as Uuid },
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -197,5 +239,15 @@ export class ProjectService {
     await this.projectRepository.save(project);
 
     return this.getProjectById(projectId);
+  }
+
+  async deleteProject(id: Uuid): Promise<void> {
+    const project = await this.projectRepository.findOne({ where: { id } });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    await this.projectRepository.remove(project);
   }
 }
