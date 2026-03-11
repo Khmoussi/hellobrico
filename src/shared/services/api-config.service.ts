@@ -120,7 +120,9 @@ export class ApiConfigService {
       logging: this.getBoolean('ENABLE_ORM_LOGS'),
       namingStrategy: new SnakeNamingStrategy(),
       synchronize: this.isDevelopment, // remove in prod
-
+      ssl: {
+        rejectUnauthorized: false,
+      },
     };
   }
 
