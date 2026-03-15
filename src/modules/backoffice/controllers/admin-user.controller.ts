@@ -4,20 +4,41 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Query,
+  Request,
+  UploadedFile,
+  UseInterceptors,
   ValidationPipe,
 } from '@nestjs/common';
-import { ApiBody, ApiCreatedResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiCreatedResponse,
+  ApiExtraModels,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { getSchemaPath } from '@nestjs/swagger';
 
 import { PageDto } from '../../../common/dto/page.dto.ts';
 import { RoleType } from '../../../constants/role-type.ts';
 import { ApiPageResponse } from '../../../decorators/api-page-response.decorator.ts';
 import { Auth } from '../../../decorators/http.decorators.ts';
 import { UserRegisterDto } from '../../auth/dto/user-register.dto.ts';
+import { UpdateAdminUserDto } from '../../user/dtos/update-admin-user.dto.ts';
 import { UserDto } from '../../user/dtos/user.dto.ts';
 import { UsersPageOptionsDto } from '../../user/dtos/users-page-options.dto.ts';
 import { UserService } from '../../user/user.service.ts';
+import { FileInterceptor } from '@nestjs/platform-express';
+import multer from 'multer';
+
+
+const multerConfig = {
+    storage: multer.memoryStorage(), // store file in memory
+    limits: { fileSize: 10 * 1024 * 1024 }, // optional: max 10MB
+  };
 
 @Controller('admin/users')
 @ApiTags('admin-users')
@@ -36,6 +57,55 @@ export class AdminUserController {
     pageOptionsDto: UsersPageOptionsDto,
   ): Promise<PageDto<UserDto>> {
     return this.userService.getUsers(pageOptionsDto);
+  }
+
+  @Patch()
+  @Auth([RoleType.ADMIN])
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    type: UserDto,
+    description: 'User updated by admin',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiExtraModels(UpdateAdminUserDto)
+  @ApiBody({
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(UpdateAdminUserDto) },
+        {
+          type: 'object',
+          properties: {
+            avatar: {
+              type: 'string',
+              format: 'binary',
+              description: 'Profile avatar image',
+            },
+          },
+        },
+      ],
+    },
+    examples: {
+      default: {
+        summary: 'Update name and email',
+        value: {
+          firstName: 'Marie',
+          lastName: 'Martin',
+          email: 'marie.martin@hellobrico.com',
+        },
+      },
+      password: {
+        summary: 'Reset password',
+        value: { password: 'NewSecureP@ss123' },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor('avatar', multerConfig))
+  async updateUser(
+    @Request() req: { user: { id: Uuid } },
+    @Body() updateAdminUserDto: UpdateAdminUserDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<UserDto> {
+    return this.userService.updateUser(req.user.id, updateAdminUserDto, file);
   }
 
   @Post('commercial')

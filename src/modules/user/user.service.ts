@@ -10,17 +10,18 @@ import type { PageDto } from '../../common/dto/page.dto.ts';
 import { FileNotImageException } from '../../exceptions/file-not-image.exception.ts';
 import { UserNotFoundException } from '../../exceptions/user-not-found.exception.ts';
 import type { IFile } from '../../interfaces/IFile.ts';
-import { AwsS3Service } from '../../shared/services/aws-s3.service.ts';
 import { ValidatorService } from '../../shared/services/validator.service.ts';
 import type { Reference } from '../../types.ts';
 import { RoleType } from '../../constants/role-type.ts';
 import { UserRegisterDto } from '../auth/dto/user-register.dto.ts';
 import { CreateSettingsCommand } from './commands/create-settings.command.ts';
 import { CreateSettingsDto } from './dtos/create-settings.dto.ts';
+import type { UpdateAdminUserDto } from './dtos/update-admin-user.dto.ts';
 import type { UserDto } from './dtos/user.dto.ts';
 import type { UsersPageOptionsDto } from './dtos/users-page-options.dto.ts';
 import { UserEntity } from './user.entity.ts';
 import type { UserSettingsEntity } from './user-settings.entity.ts';
+import { FilesService } from '../files/files.service.ts';
 
 @Injectable()
 export class UserService {
@@ -28,7 +29,7 @@ export class UserService {
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
     private validatorService: ValidatorService,
-    private awsS3Service: AwsS3Service,
+    private filesService: FilesService,
     private commandBus: CommandBus,
   ) {}
 
@@ -96,9 +97,10 @@ export class UserService {
     if (file && !this.validatorService.isImage(file.mimetype)) {
       throw new FileNotImageException();
     }
-
+    
     if (file) {
-      user.avatar = await this.awsS3Service.uploadImage(file);
+       const result = await this.filesService.uploadFile(file);
+       user.avatar=result.public_url;
     }
 
     await this.userRepository.save(user);
@@ -155,6 +157,37 @@ export class UserService {
     if (!userEntity) {
       throw new UserNotFoundException();
     }
+
+    return userEntity.toDto();
+  }
+
+  async updateUser(
+    userId: Uuid,
+    dto: UpdateAdminUserDto,
+    file?: Express.Multer.File,
+  ): Promise<UserDto> {
+    const userEntity = await this.userRepository.findOneBy({ id: userId });
+
+    if (!userEntity) {
+      throw new UserNotFoundException();
+    }
+
+    if (dto.firstName !== undefined) userEntity.firstName = dto.firstName;
+    if (dto.lastName !== undefined) userEntity.lastName = dto.lastName;
+    if (dto.email !== undefined) userEntity.email = dto.email;
+    if (dto.phone !== undefined) userEntity.phone = dto.phone;
+    if (dto.password !== undefined) userEntity.password = dto.password;
+    if (dto.role !== undefined) userEntity.role = dto.role;
+
+    if (file) {
+      if (!this.validatorService.isImage(file.mimetype)) {
+        throw new FileNotImageException();
+      }
+      const result = await this.filesService.uploadFile(file);
+      userEntity.avatar = result.public_url;
+    }
+
+    await this.userRepository.save(userEntity);
 
     return userEntity.toDto();
   }
