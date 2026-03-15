@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -17,15 +18,16 @@ import {
   ApiConsumes,
   ApiCreatedResponse,
   ApiExtraModels,
+  ApiNoContentResponse,
   ApiOkResponse,
+  ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { getSchemaPath } from '@nestjs/swagger';
 
 import { PageDto } from '../../../common/dto/page.dto.ts';
 import { RoleType } from '../../../constants/role-type.ts';
 import { ApiPageResponse } from '../../../decorators/api-page-response.decorator.ts';
-import { Auth } from '../../../decorators/http.decorators.ts';
+import { Auth, UUIDParam } from '../../../decorators/http.decorators.ts';
 import { UserRegisterDto } from '../../auth/dto/user-register.dto.ts';
 import { UpdateAdminUserDto } from '../../user/dtos/update-admin-user.dto.ts';
 import { UserDto } from '../../user/dtos/user.dto.ts';
@@ -67,39 +69,22 @@ export class AdminUserController {
     description: 'User updated by admin',
   })
   @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('avatar', multerConfig))
   @ApiExtraModels(UpdateAdminUserDto)
   @ApiBody({
     schema: {
-      allOf: [
-        { $ref: getSchemaPath(UpdateAdminUserDto) },
-        {
-          type: 'object',
-          properties: {
-            avatar: {
-              type: 'string',
-              format: 'binary',
-              description: 'Profile avatar image',
-            },
-          },
-        },
-      ],
-    },
-    examples: {
-      default: {
-        summary: 'Update name and email',
-        value: {
-          firstName: 'Marie',
-          lastName: 'Martin',
-          email: 'marie.martin@hellobrico.com',
-        },
-      },
-      password: {
-        summary: 'Reset password',
-        value: { password: 'NewSecureP@ss123' },
+      type: 'object',
+      properties: {
+        firstName: { type: 'string', example: 'Marie', description: 'First name' },
+        lastName: { type: 'string', example: 'Martin', description: 'Last name' },
+        email: { type: 'string', example: 'marie.martin@hellobrico.com', description: 'Email' },
+        phone: { type: 'string', example: '+21612345678', description: 'Phone' },
+        password: { type: 'string', example: 'NewSecureP@ss123', description: 'New password (min 6 chars)' },
+        role: { type: 'string', enum: Object.values(RoleType), description: 'Role' },
+        avatar: { type: 'string', format: 'binary', description: 'Profile avatar image' },
       },
     },
   })
-  @UseInterceptors(FileInterceptor('avatar', multerConfig))
   async updateUser(
     @Request() req: { user: { id: Uuid } },
     @Body() updateAdminUserDto: UpdateAdminUserDto,
@@ -164,5 +149,16 @@ export class AdminUserController {
   ): Promise<UserDto> {
     const user = await this.userService.createSupervisor(userRegisterDto);
     return user.toDto({ isActive: true });
+  }
+
+  @Delete(':id')
+  @Auth([RoleType.ADMIN])
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse({
+    description: 'Commercial or supervisor user deleted',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid', required: true })
+  async deleteUser(@UUIDParam('id') id: Uuid): Promise<void> {
+    return this.userService.deleteCommercialOrSupervisor(id);
   }
 }

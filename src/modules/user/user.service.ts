@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToClass } from 'class-transformer';
@@ -20,14 +20,21 @@ import type { UpdateAdminUserDto } from './dtos/update-admin-user.dto.ts';
 import type { UserDto } from './dtos/user.dto.ts';
 import type { UsersPageOptionsDto } from './dtos/users-page-options.dto.ts';
 import { UserEntity } from './user.entity.ts';
-import type { UserSettingsEntity } from './user-settings.entity.ts';
+import { UserSettingsEntity } from './user-settings.entity.ts';
 import { FilesService } from '../files/files.service.ts';
+
+const DELETABLE_BACKOFFICE_ROLES: RoleType[] = [
+  RoleType.COMMERCIAL,
+  RoleType.SUPERVISOR,
+];
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
+    @InjectRepository(UserSettingsEntity)
+    private userSettingsRepository: Repository<UserSettingsEntity>,
     private validatorService: ValidatorService,
     private filesService: FilesService,
     private commandBus: CommandBus,
@@ -199,5 +206,22 @@ export class UserService {
     return this.commandBus.execute<CreateSettingsCommand, UserSettingsEntity>(
       new CreateSettingsCommand(userId, createSettingsDto),
     );
+  }
+
+  /**
+   * Delete a commercial or supervisor user. Admins and regular users cannot be deleted via this.
+   */
+  async deleteCommercialOrSupervisor(userId: Uuid): Promise<void> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user) {
+      throw new UserNotFoundException();
+    }
+    if (!DELETABLE_BACKOFFICE_ROLES.includes(user.role)) {
+      throw new ForbiddenException(
+        'Only commercial or supervisor users can be deleted',
+      );
+    }
+    await this.userSettingsRepository.delete({ userId });
+    await this.userRepository.delete(userId);
   }
 }
