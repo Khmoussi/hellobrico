@@ -11,7 +11,7 @@ export class PartnerEntity extends AbstractEntity {
   @Column({ type: 'varchar', length: 255 })
   fullName!: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255,unique:true }) // add unique constraint
   email!: string;
 
   @Column({ type: 'varchar', length: 50 })

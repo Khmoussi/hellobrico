@@ -9,7 +9,7 @@ import {
   Query,
   ValidationPipe,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { PageDto } from '../../../common/dto/page.dto.ts';
 import { RoleType } from '../../../constants/role-type.ts';
@@ -46,6 +46,7 @@ export class AdminPartnerController {
     type: PartnerDto,
     description: 'Partnership proposal by id',
   })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid', required: true })
   async getPartner(@UUIDParam('id') id: Uuid): Promise<PartnerDto> {
     return this.partnerService.getPartnerById(id);
   }
@@ -66,6 +67,7 @@ export class AdminPartnerController {
       },
     },
   })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid', required: true })
   async updatePartner(
     @UUIDParam('id') id: Uuid,
     @Body() updatePartnerDto: UpdatePartnerDto,
@@ -79,6 +81,7 @@ export class AdminPartnerController {
   @ApiNoContentResponse({
     description: 'Partner removed',
   })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid', required: true })
   async deletePartner(@UUIDParam('id') id: Uuid): Promise<void> {
     return this.partnerService.deletePartner(id);
   }
