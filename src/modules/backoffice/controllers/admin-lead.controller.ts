@@ -129,6 +129,15 @@ export class AdminLeadController {
     return this.leadService.assignLead(id, dto);
   }
 
+  @Patch(':id/assign/unassign')
+  @Auth([RoleType.ADMIN])
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: LeadDto, description: 'Lead unassigned' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid', required: true })
+  async unassignLead(@UUIDParam('id') id: Uuid): Promise<LeadDto> {
+    return this.leadService.unassignLead(id);
+  }
+
   @Post(':id/notes')
   @Auth([RoleType.ADMIN])
   @HttpCode(HttpStatus.OK)

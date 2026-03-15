@@ -204,6 +204,18 @@ export class LeadService {
     return new LeadDto(updated!);
   }
 
+  async unassignLead(id: Uuid): Promise<LeadDto> {
+    const lead = await this.leadRepository.findOne({ where: { id } });
+    if (!lead) throw new NotFoundException('Lead not found');
+    lead.assignedTo = null;
+    await this.leadRepository.save(lead);
+    const updated = await this.leadRepository.findOne({
+      where: { id },
+      relations: ['files'],
+    });
+    return new LeadDto(updated!);
+  }
+
   async addLeadNote(
     id: Uuid,
     dto: AddLeadNoteDto,

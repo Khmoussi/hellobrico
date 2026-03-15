@@ -198,3 +198,15 @@ export function LinkCleanupTransform(options?: {
     return value;
   });
 }
+
+/**
+ * Treat empty values as undefined (not sent).
+ * Converts null, undefined, '' and whitespace-only strings to undefined.
+ */
+export function EmptyToUndefined(): PropertyDecorator {
+  return Transform(({ value }) => {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === 'string' && value.trim() === '') return undefined;
+    return value;
+  });
+}

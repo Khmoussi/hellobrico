@@ -241,6 +241,21 @@ export class ProjectService {
     return this.getProjectById(projectId);
   }
 
+  async unassignSupervisor(projectId: Uuid): Promise<ProjectDto> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    project.supervisor = null;
+    await this.projectRepository.save(project);
+
+    return this.getProjectById(projectId);
+  }
+
   async deleteProject(id: Uuid): Promise<void> {
     const project = await this.projectRepository.findOne({ where: { id } });
 

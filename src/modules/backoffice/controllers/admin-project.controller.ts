@@ -135,6 +135,15 @@ export class AdminProjectController {
     return this.projectService.assignSupervisor(id, dto);
   }
 
+  @Patch(':id/supervisor/unassign')
+  @Auth([RoleType.ADMIN])
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ProjectDto, description: 'Project supervisor unassigned' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid', required: true })
+  async unassignSupervisor(@UUIDParam('id') id: Uuid): Promise<ProjectDto> {
+    return this.projectService.unassignSupervisor(id);
+  }
+
   @Delete(':id')
   @Auth([RoleType.ADMIN])
   @HttpCode(HttpStatus.NO_CONTENT)

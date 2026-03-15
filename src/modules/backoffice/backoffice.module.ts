@@ -5,6 +5,7 @@ import { UserModule } from '../user/user.module.ts';
 import { AdminArticleController } from './controllers/admin-article.controller.ts';
 import { AdminDashboardController } from './controllers/admin-dashboard.controller.ts';
 import { AdminLeadController } from './controllers/admin-lead.controller.ts';
+import { AdminPartnerController } from './controllers/admin-partner.controller.ts';
 import { AdminProjectController } from './controllers/admin-project.controller.ts';
 import { AdminQuoteController } from './controllers/admin-quote.controller.ts';
 import { AdminUserController } from './controllers/admin-user.controller.ts';
@@ -14,6 +15,7 @@ import { AdminUserController } from './controllers/admin-user.controller.ts';
   controllers: [
     AdminDashboardController,
     AdminLeadController,
+    AdminPartnerController,
     AdminArticleController,
     AdminUserController,
     AdminQuoteController,
