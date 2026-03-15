@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -15,6 +16,7 @@ export class PartnerService {
   constructor(
     @InjectRepository(PartnerEntity)
     private partnerRepository: Repository<PartnerEntity>,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async createPartner(createPartnerDto: CreatePartnerDto): Promise<PartnerDto> {
@@ -29,6 +31,7 @@ export class PartnerService {
       description: createPartnerDto.description ?? null,
     });
     const saved = await this.partnerRepository.save(entity);
+    this.eventEmitter.emit('partner.created', { partner: saved });
     return new PartnerDto(saved);
   }
 

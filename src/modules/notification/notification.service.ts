@@ -64,6 +64,36 @@ export class NotificationService {
             );
         }
 
+        async notifyAdmins(notification: Notification) {
+            const adminUsers = await this.userService.findUsersByRoles([
+                RoleType.ADMIN,
+            ]);
+            if (adminUsers.length === 0) return;
+
+            const userNotifications = adminUsers.map((user) =>
+                this.userNotificationRepo.create({
+                    user,
+                    notification,
+                    isSeen: false,
+                }),
+            );
+            await this.userNotificationRepo.save(userNotifications);
+
+            const contentHtml = `<p><strong>${notification.title}</strong></p><p>${notification.content}</p>`;
+            await Promise.all(
+                adminUsers
+                    .filter((u) => u.email)
+                    .map((user) =>
+                        this.sendMail(
+                            notification,
+                            user.email!,
+                            notification.content,
+                            contentHtml,
+                        ),
+                    ),
+            );
+        }
+
        
 
 

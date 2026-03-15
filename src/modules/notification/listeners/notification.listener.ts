@@ -4,6 +4,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { NotificationService } from '../notification.service';
 import { NotificationTypeEnum } from '../enum/notification-type.enum';
 import type { LeadEntity } from '../../lead/entities/lead.entity.ts';
+import type { PartnerEntity } from '../../lead/entities/partner.entity.ts';
 
 @Injectable()
 export class NotificationListener {
@@ -320,5 +321,20 @@ export class NotificationListener {
       undefined,
     );
     await this.notificationService.notifyClient(lead.id, notification);
+  }
+
+  @OnEvent('partner.created', { async: true })
+  async handlePartnerCreated(payload: { partner: PartnerEntity }) {
+    const partner = payload.partner;
+    const title = 'Nouvelle demande de partenariat';
+    const content = `${partner.companyName} — ${partner.fullName} (${partner.email}). ${partner.partnershipType}${partner.cityCountry ? ` • ${partner.cityCountry}` : ''}. ${partner.description ?? ''}`.trim();
+    const notification = await this.notificationService.createNotification(
+      title,
+      content,
+      NotificationTypeEnum.PARTNER,
+      undefined,
+      undefined,
+    );
+    await this.notificationService.notifyAdmins(notification);
   }
 }

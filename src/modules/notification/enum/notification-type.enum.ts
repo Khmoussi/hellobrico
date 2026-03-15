@@ -4,4 +4,5 @@ export enum NotificationTypeEnum {
   RESERVATION = 'RESERVATION',
   COMMISSION = 'COMMISSION',
   LEAD = 'LEAD',
+  PARTNER = 'PARTNER',
 }
