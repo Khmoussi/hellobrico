@@ -31,7 +31,7 @@ export async function bootstrap(): Promise<NestExpressApplication> {
     new ExpressAdapter(),
     {
       cors: {
-        origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:3001'],
+        origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000','https://bricooo.vercel.app', 'http://localhost:3001'],
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
         credentials: true,
       }
