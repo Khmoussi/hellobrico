@@ -86,7 +86,7 @@ export class LeadService {
   async getLeadById(id: Uuid): Promise<LeadDto> {
     const lead = await this.leadRepository.findOne({
       where: { id },
-      relations: ['files'],
+      relations: ['files', 'assignedTo'],
     });
 
     if (!lead) {
